@@ -37,12 +37,12 @@ def load_model(args, load_8bit=False):
                 checkpoint["model"][k] = v[shard_size * mp_rank : shard_size * (mp_rank + 1)]
         missing_keys, unexpected_keys = model.load_state_dict(checkpoint["model"], strict=False)
 
-    generator = LLaMA(
+    return LLaMA(
         model,
-        Tokenizer(model_path=os.path.join(args.llama_model_path, "tokenizer.model")),
+        Tokenizer(
+            model_path=os.path.join(args.llama_model_path, "tokenizer.model")
+        ),
     )
-
-    return generator
 
 
 @torch.inference_mode()

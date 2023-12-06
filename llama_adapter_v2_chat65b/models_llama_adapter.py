@@ -13,7 +13,7 @@ def _load_and_redistribute_checkpoint(llama_model_path, model_name):
     with open(Path(llama_model_path) / model_name / "params.json") as f:
         params = json.load(f)
     tokenizer = Tokenizer(model_path=str(Path(llama_model_path) / "tokenizer.model"))
-    print("Using model path: %s, model_name: %s" % (llama_model_path, model_name))
+    print(f"Using model path: {llama_model_path}, model_name: {model_name}")
 
     checkpoints = (Path(llama_model_path) / model_name).glob("*.pth")
     checkpoints = sorted(checkpoints)
@@ -73,7 +73,7 @@ def _load_and_redistribute_checkpoint(llama_model_path, model_name):
                 for key in row_parallel_names:
                     add_weight_with_split_dim(layer_prefix + key, 1)
 
-            full_state_dict_meta = dict((k, v.shape) for k, v in full_state_dict.items())
+            full_state_dict_meta = {k: v.shape for k, v in full_state_dict.items()}
             dist.broadcast_object_list([full_state_dict_meta, split_dims], src=0)
 
         else:  # dist.get_rank() != 0
@@ -83,7 +83,7 @@ def _load_and_redistribute_checkpoint(llama_model_path, model_name):
 
         local_state_dict = {}
         for k in sorted(full_state_dict_meta.keys()):
-            print("redistributing weights: %s" % k)
+            print(f"redistributing weights: {k}")
             if dist.get_rank() == 0:
                 value = full_state_dict[k].cuda().half()
                 del full_state_dict[k]
@@ -140,15 +140,13 @@ def Llama_adapter(
             del model_llama_adapter.layers[i].attention.gate
 
     for name, param in model_llama_adapter.named_parameters():
-        requires_grad = (
+        if requires_grad := (
             name.endswith(".gate")
             or name == "adapter_query"
             or (train_norm and "_norm." in name)
             or name.endswith(".added_bias")
             or name.endswith(".added_scale")
-        )
-
-        if requires_grad:
+        ):
             param.data = param.data.float()
             param.requires_grad_(True)
         else:

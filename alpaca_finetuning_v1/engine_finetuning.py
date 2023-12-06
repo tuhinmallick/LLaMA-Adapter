@@ -21,7 +21,7 @@ def train_one_epoch(
     model.train(True)
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter("lr", misc.SmoothedValue(window_size=1, fmt="{value:.6f}"))
-    header = "Epoch: [{}]".format(epoch)
+    header = f"Epoch: [{epoch}]"
     print_freq = 10
 
     accum_iter = args.accum_iter
@@ -29,7 +29,7 @@ def train_one_epoch(
     optimizer.zero_grad()
 
     if log_writer is not None:
-        print("log_dir: {}".format(log_writer.log_dir))
+        print(f"log_dir: {log_writer.log_dir}")
     for data_iter_step, (examples, labels, example_mask) in enumerate(
         metric_logger.log_every(data_loader, print_freq, header)
     ):
@@ -43,7 +43,7 @@ def train_one_epoch(
         c_loss_value = c_loss.item()
 
         if not math.isfinite(loss_value):
-            print("Loss is {}, stopping training".format(loss_value))
+            print(f"Loss is {loss_value}, stopping training")
             sys.exit(1)
 
         loss /= accum_iter
@@ -89,13 +89,13 @@ def val_one_epoch(
     model.eval()
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter("lr", misc.SmoothedValue(window_size=1, fmt="{value:.6f}"))
-    header = "Epoch: [{}]".format(epoch)
+    header = f"Epoch: [{epoch}]"
     print_freq = 10
 
     accum_iter = args.accum_iter
 
     if log_writer is not None:
-        print("log_dir: {}".format(log_writer.log_dir))
+        print(f"log_dir: {log_writer.log_dir}")
     for data_iter_step, (examples, labels, example_mask) in enumerate(
         metric_logger.log_every(data_loader, print_freq, header)
     ):
@@ -108,7 +108,7 @@ def val_one_epoch(
         c_loss_value = c_loss.item()
 
         if not math.isfinite(loss_value):
-            print("Loss is {}, stopping training".format(loss_value))
+            print(f"Loss is {loss_value}, stopping training")
             sys.exit(1)
 
         metric_logger.update(closs=c_loss_value)

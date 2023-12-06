@@ -65,11 +65,6 @@ class DGCNN(nn.Module):
         return feature
 
     def forward(self, f, coor):
-        # f: B G C
-        # coor: B G 3
-
-        # bs 3 N   bs C N
-        feature_list = []
         coor = coor.transpose(1, 2).contiguous()  # B 3 N
         f = f.transpose(1, 2).contiguous()  # B C N
         f = self.input_trans(f)  # B 128 N
@@ -77,8 +72,7 @@ class DGCNN(nn.Module):
         f = self.get_graph_feature(coor, f, coor, f)  # B 256 N k
         f = self.layer1(f)  # B 256 N k
         f = f.max(dim=-1, keepdim=False)[0]  # B 256 N
-        feature_list.append(f)
-
+        feature_list = [f]
         f = self.get_graph_feature(coor, f, coor, f)  # B 512 N k
         f = self.layer2(f)  # B 512 N k
         f = f.max(dim=-1, keepdim=False)[0]  # B 512 N
@@ -304,9 +298,7 @@ class DiscreteVAE(nn.Module):
         loss_coarse_block = self.loss_func_cdl1(coarse, group_gt)
         loss_fine_block = self.loss_func_cdl1(fine, group_gt)
 
-        loss_recon = loss_coarse_block + loss_fine_block
-
-        return loss_recon
+        return loss_coarse_block + loss_fine_block
 
     def get_loss(self, ret, gt):
         # reconstruction loss
@@ -336,5 +328,4 @@ class DiscreteVAE(nn.Module):
             whole_coarse = (coarse + center.unsqueeze(2)).reshape(inp.size(0), -1, 3)
 
         assert fine.size(2) == self.group_size
-        ret = (whole_coarse, whole_fine, coarse, fine, neighborhood, logits)
-        return ret
+        return whole_coarse, whole_fine, coarse, fine, neighborhood, logits

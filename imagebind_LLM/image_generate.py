@@ -10,17 +10,17 @@ def image_generate(inputs, model: llama.LLaMA_adapter, pipe, prompt, cache_size,
     embeddings_weights = []
 
     for input_type, (input, input_weight) in inputs.items():
-        if input_type in ['Image', 'Video']:
-            type = 'vision'
-        else:
-            type = input_type.lower()
+        type = 'vision' if input_type in ['Image', 'Video'] else input_type.lower()
         embedding = model.image_bind({type : input}, prenorm=True)[1][type]
         if type == 'point':
             embedding = embedding / point_scale
         embeddings.append(embedding)
         embeddings_weights.append(input_weight)
     embeddings_weights = [x/(sum(embeddings_weights)+1e-6) for x in embeddings_weights]
-    embedding = sum([embedding*embedding_weight for embedding, embedding_weight in zip(embeddings, embeddings_weights)])
+    embedding = sum(
+        embedding * embedding_weight
+        for embedding, embedding_weight in zip(embeddings, embeddings_weights)
+    )
 
     if knn:
         index = model.index
@@ -46,6 +46,4 @@ def image_generate(inputs, model: llama.LLaMA_adapter, pipe, prompt, cache_size,
         embedding = embedding_norm_scale*embedding
 
     embedding = torch.squeeze(embedding,0)
-    image = pipe(prompt=prompt, image_embeds=embedding).images[0]
-
-    return image
+    return pipe(prompt=prompt, image_embeds=embedding).images[0]

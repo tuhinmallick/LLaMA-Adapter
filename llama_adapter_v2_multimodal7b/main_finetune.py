@@ -88,8 +88,8 @@ def get_args_parser():
 def main(args):
     misc.init_distributed_mode(args)
 
-    print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
-    print("{}".format(args).replace(', ', ',\n'))
+    print(f'job dir: {os.path.dirname(os.path.realpath(__file__))}')
+    print(f"{args}".replace(', ', ',\n'))
 
     device = torch.device(args.device)
 
@@ -108,7 +108,7 @@ def main(args):
     model.to(device)
 
     model_without_ddp = model
-    print("Model = %s" % str(model_without_ddp))
+    print(f"Model = {str(model_without_ddp)}")
 
     print("Trainable Params:")
     print([(key, val.shape) for key, val in model.named_parameters() if val.requires_grad])
@@ -146,7 +146,7 @@ def main(args):
     sampler_train = torch.utils.data.DistributedSampler(
         dataset_train, num_replicas=num_tasks, rank=global_rank, shuffle=True
     )
-    print("Sampler_train = %s" % str(sampler_train))
+    print(f"Sampler_train = {str(sampler_train)}")
 
     data_loader_train = torch.utils.data.DataLoader(
         dataset_train, sampler=sampler_train,
@@ -194,7 +194,7 @@ def main(args):
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-    print('Training time {}'.format(total_time_str))
+    print(f'Training time {total_time_str}')
 
 
 if __name__ == '__main__':

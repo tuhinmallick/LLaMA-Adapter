@@ -46,15 +46,14 @@ def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0):
     freqs = 1.0 / (theta ** (torch.arange(0, dim, 2)[: (dim // 2)].float() / dim))
     t = torch.arange(end, device=freqs.device)  # type: ignore
     freqs = torch.outer(t, freqs).float()  # type: ignore
-    freqs_cis = torch.polar(torch.ones_like(freqs), freqs)  # complex64
-    return freqs_cis
+    return torch.polar(torch.ones_like(freqs), freqs)
 
 
 def reshape_for_broadcast(freqs_cis: torch.Tensor, x: torch.Tensor):
     ndim = x.ndim
     assert 0 <= 1 < ndim
     assert freqs_cis.shape == (x.shape[1], x.shape[-1])
-    shape = [d if i == 1 or i == ndim - 1 else 1 for i, d in enumerate(x.shape)]
+    shape = [d if i in [1, ndim - 1] else 1 for i, d in enumerate(x.shape)]
     return freqs_cis.view(*shape)
 
 
@@ -247,11 +246,10 @@ class FeedForward(nn.Module):
            nn.init.constant_(self.lora_w3_l2.weight.data, 0)
 
     def forward(self, x):
-        if self.w_lora:
-           out = F.silu(self.w1(x) + self.lora_w1_l2(self.lora_w1_l1(x))) * (self.w3(x) + self.lora_w3_l2(self.lora_w3_l1(x)))
-           return self.w2(out) + self.lora_w2_l2(self.lora_w2_l1(out))
-        else:
-           return self.w2(F.silu(self.w1(x)) * self.w3(x))
+        if not self.w_lora:
+            return self.w2(F.silu(self.w1(x)) * self.w3(x))
+        out = F.silu(self.w1(x) + self.lora_w1_l2(self.lora_w1_l1(x))) * (self.w3(x) + self.lora_w3_l2(self.lora_w3_l1(x)))
+        return self.w2(out) + self.lora_w2_l2(self.lora_w2_l1(out))
 
 
 class TransformerBlock(nn.Module):
@@ -271,8 +269,7 @@ class TransformerBlock(nn.Module):
     def forward(self, x: torch.Tensor, start_pos: int, freqs_cis: torch.Tensor, mask: Optional[torch.Tensor], prompt=None):
 
         h = x + self.attention.forward(self.attention_norm(x), start_pos, freqs_cis, mask, prompt)
-        out = h + self.feed_forward.forward(self.ffn_norm(h))
-        return out
+        return h + self.feed_forward.forward(self.ffn_norm(h))
 
 
 class Transformer(nn.Module):

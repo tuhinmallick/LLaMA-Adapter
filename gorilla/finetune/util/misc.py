@@ -111,15 +111,12 @@ class MetricLogger(object):
             return self.meters[attr]
         if attr in self.__dict__:
             return self.__dict__[attr]
-        raise AttributeError("'{}' object has no attribute '{}'".format(
-            type(self).__name__, attr))
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{attr}'"
+        )
 
     def __str__(self):
-        loss_str = []
-        for name, meter in self.meters.items():
-            loss_str.append(
-                "{}: {}".format(name, str(meter))
-            )
+        loss_str = [f"{name}: {str(meter)}" for name, meter in self.meters.items()]
         return self.delimiter.join(loss_str)
 
     def synchronize_between_processes(self):
@@ -194,23 +191,15 @@ def setup_for_distributed(is_master):
 
 
 def is_dist_avail_and_initialized():
-    if not dist.is_available():
-        return False
-    if not dist.is_initialized():
-        return False
-    return True
+    return False if not dist.is_available() else bool(dist.is_initialized())
 
 
 def get_world_size():
-    if not is_dist_avail_and_initialized():
-        return 1
-    return dist.get_world_size()
+    return 1 if not is_dist_avail_and_initialized() else dist.get_world_size()
 
 
 def get_rank():
-    if not is_dist_avail_and_initialized():
-        return 0
-    return dist.get_rank()
+    return 0 if not is_dist_avail_and_initialized() else dist.get_rank()
 
 
 def is_main_process():
@@ -226,11 +215,13 @@ def init_distributed_mode(args):
         args.rank = int(os.environ['OMPI_COMM_WORLD_RANK'])
         args.world_size = int(os.environ['OMPI_COMM_WORLD_SIZE'])
         args.gpu = int(os.environ['OMPI_COMM_WORLD_LOCAL_RANK'])
-        args.dist_url = "tcp://%s:%s" % (os.environ['MASTER_ADDR'], os.environ['MASTER_PORT'])
+        args.dist_url = (
+            f"tcp://{os.environ['MASTER_ADDR']}:{os.environ['MASTER_PORT']}"
+        )
         os.environ['LOCAL_RANK'] = str(args.gpu)
         os.environ['RANK'] = str(args.rank)
         os.environ['WORLD_SIZE'] = str(args.world_size)
-        # ["RANK", "WORLD_SIZE", "MASTER_ADDR", "MASTER_PORT", "LOCAL_RANK"]
+            # ["RANK", "WORLD_SIZE", "MASTER_ADDR", "MASTER_PORT", "LOCAL_RANK"]
     elif 'RANK' in os.environ and 'WORLD_SIZE' in os.environ:
         args.rank = int(os.environ["RANK"])
         args.world_size = int(os.environ['WORLD_SIZE'])
@@ -258,8 +249,10 @@ def init_distributed_mode(args):
 
     torch.cuda.set_device(args.gpu)
     args.dist_backend = 'nccl'
-    print('| distributed init (rank {}): {}, gpu {}'.format(
-        args.rank, args.dist_url, args.gpu), flush=True)
+    print(
+        f'| distributed init (rank {args.rank}): {args.dist_url}, gpu {args.gpu}',
+        flush=True,
+    )
     torch.distributed.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                          world_size=args.world_size, rank=args.rank)
     torch.distributed.barrier()
@@ -271,11 +264,13 @@ def init_distributed_mode1(args):
         args.rank = int(os.environ['OMPI_COMM_WORLD_RANK'])
         args.world_size = int(os.environ['OMPI_COMM_WORLD_SIZE'])
         args.gpu = int(os.environ['OMPI_COMM_WORLD_LOCAL_RANK'])
-        args.dist_url = "tcp://%s:%s" % (os.environ['MASTER_ADDR'], os.environ['MASTER_PORT'])
+        args.dist_url = (
+            f"tcp://{os.environ['MASTER_ADDR']}:{os.environ['MASTER_PORT']}"
+        )
         os.environ['LOCAL_RANK'] = str(args.gpu)
         os.environ['RANK'] = str(args.rank)
         os.environ['WORLD_SIZE'] = str(args.world_size)
-        # ["RANK", "WORLD_SIZE", "MASTER_ADDR", "MASTER_PORT", "LOCAL_RANK"]
+            # ["RANK", "WORLD_SIZE", "MASTER_ADDR", "MASTER_PORT", "LOCAL_RANK"]
     elif 'RANK' in os.environ and 'WORLD_SIZE' in os.environ:
         args.rank = int(os.environ["RANK"])
         args.world_size = int(os.environ['WORLD_SIZE'])
@@ -293,8 +288,10 @@ def init_distributed_mode1(args):
 
     torch.cuda.set_device(args.gpu)
     args.dist_backend = 'nccl'
-    print('| distributed init (rank {}): {}, gpu {}'.format(
-        args.rank, args.dist_url, args.gpu), flush=True)
+    print(
+        f'| distributed init (rank {args.rank}): {args.dist_url}, gpu {args.gpu}',
+        flush=True,
+    )
     torch.distributed.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                          world_size=args.world_size, rank=args.rank)
     torch.distributed.barrier()
@@ -310,13 +307,10 @@ class NativeScalerWithGradNormCount:
     def __call__(self, loss, optimizer, model, clip_grad=None, parameters=None, create_graph=False, update_grad=True):
         if update_grad:
             self._scaler.scale(loss).backward(create_graph=create_graph)
-            if clip_grad is not None:
-                self._scaler.unscale_(optimizer)  # unscale the gradients of optimizer's assigned params in-place
-                norm = model.clip_grad_norm_(clip_grad)
-            else:
+            if clip_grad is None:
                 raise NotImplementedError("please set clip_grad to a very large value if you do not want to clip.")
-                self._scaler.unscale_(optimizer)
-                norm = get_grad_norm_(parameters)
+            self._scaler.unscale_(optimizer)  # unscale the gradients of optimizer's assigned params in-place
+            norm = model.clip_grad_norm_(clip_grad)
             self._scaler.step(optimizer)
             self._scaler.update()
         else:
@@ -336,15 +330,23 @@ def get_grad_norm_(parameters, norm_type: float = 2.0) -> torch.Tensor:
     if isinstance(parameters, torch.Tensor):
         parameters = [parameters]
     parameters = [p for p in parameters if p.grad is not None]
-    norm_type = float(norm_type)
-    if len(parameters) == 0:
+    norm_type = norm_type
+    if not parameters:
         return torch.tensor(0.)
     device = parameters[0].grad.device
-    if norm_type == inf:
-        total_norm = max(p.grad.detach().abs().max().to(device) for p in parameters)
-    else:
-        total_norm = torch.norm(torch.stack([torch.norm(p.grad.detach(), norm_type).to(device) for p in parameters]), norm_type)
-    return total_norm
+    return (
+        max(p.grad.detach().abs().max().to(device) for p in parameters)
+        if norm_type == inf
+        else torch.norm(
+            torch.stack(
+                [
+                    torch.norm(p.grad.detach(), norm_type).to(device)
+                    for p in parameters
+                ]
+            ),
+            norm_type,
+        )
+    )
 
 
 def save_model(output_dir, args, model, optimizer, loss_scaler, dataset_state, epoch=None, iteration=None):
@@ -394,24 +396,24 @@ def save_model(output_dir, args, model, optimizer, loss_scaler, dataset_state, e
             torch.save(consolidated_model_state_dict, consolidated_model_save_path)
 
 def load_model(args, model, optimizer, loss_scaler, dataset_train):
-    if args.resume:
-        print("Resume checkpoint %s" % args.resume)
-        local_checkpoint_path = os.path.join(
-            args.resume,
-            f"checkpoint.{dist.get_rank():05d}-of-{dist.get_world_size():05d}.pth",
-        )
-        checkpoint = torch.load(local_checkpoint_path, map_location='cpu')
-        with FSDP.state_dict_type(model, StateDictType.SHARDED_STATE_DICT):
-            model.load_state_dict(checkpoint['model'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
-        loss_scaler.load_state_dict(checkpoint['scaler'])
-        dataset_train.load_state_dict(checkpoint["dataset_state"])
+    if not args.resume:
+        return
+    print(f"Resume checkpoint {args.resume}")
+    local_checkpoint_path = os.path.join(
+        args.resume,
+        f"checkpoint.{dist.get_rank():05d}-of-{dist.get_world_size():05d}.pth",
+    )
+    checkpoint = torch.load(local_checkpoint_path, map_location='cpu')
+    with FSDP.state_dict_type(model, StateDictType.SHARDED_STATE_DICT):
+        model.load_state_dict(checkpoint['model'])
+    optimizer.load_state_dict(checkpoint['optimizer'])
+    loss_scaler.load_state_dict(checkpoint['scaler'])
+    dataset_train.load_state_dict(checkpoint["dataset_state"])
 
-        to_return = [
-            int(checkpoint['epoch']) + 1 if hasattr(checkpoint, 'epoch') else None,
-            int(checkpoint['iter']) + 1 if hasattr(checkpoint, 'iter') else None
-        ]
-        return to_return
+    return [
+        int(checkpoint['epoch']) + 1 if hasattr(checkpoint, 'epoch') else None,
+        int(checkpoint['iter']) + 1 if hasattr(checkpoint, 'iter') else None,
+    ]
 
 
 def load_pretrained(load_dir, args, model):
@@ -434,16 +436,16 @@ def load_pretrained(load_dir, args, model):
 
 def all_reduce_mean(x):
     world_size = get_world_size()
-    if world_size > 1:
-        if isinstance(x, torch.Tensor):
-            x_reduce = x.clone().cuda()
-        else:
-            x_reduce = torch.tensor(x).cuda()
-        dist.all_reduce(x_reduce)
-        x_reduce /= world_size
-        return x_reduce.item()
-    else:
+    if world_size <= 1:
         return x
+    x_reduce = (
+        x.clone().cuda()
+        if isinstance(x, torch.Tensor)
+        else torch.tensor(x).cuda()
+    )
+    dist.all_reduce(x_reduce)
+    x_reduce /= world_size
+    return x_reduce.item()
 
 
 def add_weight_decay(model, weight_decay=1e-5, skip_list=()):

@@ -119,15 +119,15 @@ class LLaMA_adapter(nn.Module):
         outputs = []
         outputs_weights = []
         for input_type, (input, input_weight) in inputs.items():
-            if input_type in ['Image', 'Video']:
-                type = 'vision'
-            else:
-                type = input_type.lower()
+            type = 'vision' if input_type in ['Image', 'Video'] else input_type.lower()
             outputs.append(F.normalize(self.image_bind({type : input})[type], dim=-1))
             outputs_weights.append(input_weight)
         outputs_weights = [x/(sum(outputs_weights)+1e-6) for x in outputs_weights]
 
-        visual_feats = sum([output*output_weight for output, output_weight in zip(outputs, outputs_weights)])
+        visual_feats = sum(
+            output * output_weight
+            for output, output_weight in zip(outputs, outputs_weights)
+        )
         device = visual_feats.device
 
         if self.knn:
@@ -241,8 +241,8 @@ class LLaMA_adapter(nn.Module):
         if isinstance(prompts[0], str):
             prompts = [self.tokenizer.encode(x, bos=True, eos=False) for x in prompts]
 
-        min_prompt_size = min([len(t) for t in prompts])
-        max_prompt_size = max([len(t) for t in prompts])
+        min_prompt_size = min(len(t) for t in prompts)
+        max_prompt_size = max(len(t) for t in prompts)
 
         total_len = min(params.max_seq_len, max_gen_len + max_prompt_size)
 

@@ -36,13 +36,9 @@ PROMPT_DICT = {
 class InstructionDataset(Dataset):
     def __init__(self, data_path, model_path, max_words=30, partition="train"):
         self.ann = json.load(open(data_path))
-        if partition == "train":
-            self.ann = self.ann
-        else:
-            self.ann = self.ann[:200]
-
+        self.ann = self.ann if partition == "train" else self.ann[:200]
         self.max_words = max_words
-        tokenizer = Tokenizer(model_path=model_path + "./tokenizer.model")
+        tokenizer = Tokenizer(model_path=f"{model_path}./tokenizer.model")
         self.tokenizer1 = tokenizer
 
     def __len__(self):
@@ -150,8 +146,8 @@ def main(args):
 
     misc.init_distributed_mode(args)
 
-    print("job dir: {}".format(os.path.dirname(os.path.realpath(__file__))))
-    print("{}".format(args).replace(", ", ",\n"))
+    print(f"job dir: {os.path.dirname(os.path.realpath(__file__))}")
+    print(f"{args}".replace(", ", ",\n"))
 
     device = torch.device(args.device)
 
@@ -172,21 +168,17 @@ def main(args):
     print(dataset_train)
     print(dataset_val)
 
-    if True:  # args.distributed:
-        num_tasks = misc.get_world_size()
-        global_rank = misc.get_rank()
-        sampler_train = torch.utils.data.DistributedSampler(
-            dataset_train, num_replicas=num_tasks, rank=global_rank, shuffle=True
-        )
+    num_tasks = misc.get_world_size()
+    global_rank = misc.get_rank()
+    sampler_train = torch.utils.data.DistributedSampler(
+        dataset_train, num_replicas=num_tasks, rank=global_rank, shuffle=True
+    )
 
-        sampler_val = torch.utils.data.DistributedSampler(
-            dataset_val, num_replicas=num_tasks, rank=global_rank, shuffle=True
-        )
+    sampler_val = torch.utils.data.DistributedSampler(
+        dataset_val, num_replicas=num_tasks, rank=global_rank, shuffle=True
+    )
 
-        print("Sampler_train = %s" % str(sampler_train))
-    else:
-        sampler_train = torch.utils.data.RandomSampler(dataset_train)
-
+    print(f"Sampler_train = {str(sampler_train)}")
     if global_rank == 0 and args.log_dir is not None:
         os.makedirs(args.log_dir, exist_ok=True)
         log_writer = SummaryWriter(log_dir=args.log_dir)
@@ -217,7 +209,7 @@ def main(args):
     model.to(device)
 
     model_without_ddp = model
-    print("Model = %s" % str(model_without_ddp))
+    print(f"Model = {str(model_without_ddp)}")
 
     eff_batch_size = args.batch_size * args.accum_iter * misc.get_world_size()
 
@@ -282,7 +274,7 @@ def main(args):
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-    print("Training time {}".format(total_time_str))
+    print(f"Training time {total_time_str}")
 
 
 if __name__ == "__main__":

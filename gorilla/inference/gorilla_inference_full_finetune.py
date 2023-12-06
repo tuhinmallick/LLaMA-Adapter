@@ -53,9 +53,7 @@ def get_questions(question_file):
     # Load questions file
     question_jsons = []
     with open(question_file, "r") as ques_file:
-        for line in ques_file:
-            question_jsons.append(line)
-
+        question_jsons.extend(iter(ques_file))
     return question_jsons
 
 
@@ -149,14 +147,14 @@ def main(
             results = generator.generate(
                 batch_formated_prompt, max_gen_len=256, temperature=temperature, top_p=top_p
             )
-            for i in range(len(batch_idx)):
-                ans_jsons.append(
-                    {
-                        "question_id": batch_idx[i],
-                        "questions": batch_prompt[i],
-                        "text": results[i],
-                    }
-                )
+            ans_jsons.extend(
+                {
+                    "question_id": batch_idx[i],
+                    "questions": batch_prompt[i],
+                    "text": results[i],
+                }
+                for i in range(len(batch_idx))
+            )
             batch_idx = []
             batch_prompt = []
             batch_formated_prompt = []

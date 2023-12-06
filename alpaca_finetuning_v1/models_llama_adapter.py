@@ -23,7 +23,7 @@ def Llama7B_adapter(args, **kwargs):
         adapter_layer=args.adapter_layer,
         **params
     )
-    tokenizer = Tokenizer(model_path=llama_model_path + "/tokenizer.model")
+    tokenizer = Tokenizer(model_path=f"{llama_model_path}/tokenizer.model")
 
     model_args.vocab_size = tokenizer.n_words
     torch.set_default_tensor_type(torch.cuda.HalfTensor)

@@ -113,9 +113,7 @@ class PretrainDataset(Dataset):
             images.extend(images_this_meta)
             captions.extend(captions_this_meta)
 
-        self.data_list = []
-        for x, y in zip(images, captions):
-            self.data_list.append({'url': x, 'caption': y})
+        self.data_list = [{'url': x, 'caption': y} for x, y in zip(images, captions)]
         print(f"total length: {len(self)}")
         self.transform = transform
         self.max_words = max_words
