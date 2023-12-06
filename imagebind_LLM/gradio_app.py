@@ -117,26 +117,24 @@ def multimodal_generate(
 
 def show_point_cloud(file):
     point = torch.load(file.name).numpy()
-    fig = go.Figure(
+    return go.Figure(
         data=[
             go.Scatter3d(
-                x=point[:,0], y=point[:,1], z=point[:,2], 
+                x=point[:, 0],
+                y=point[:, 1],
+                z=point[:, 2],
                 mode='markers',
-                marker=dict(
-                size=1.2,
-                color='gray'
-            )
+                marker=dict(size=1.2, color='gray'),
             )
         ],
         layout=dict(
             scene=dict(
                 xaxis=dict(visible=False),
                 yaxis=dict(visible=False),
-                zaxis=dict(visible=False)
+                zaxis=dict(visible=False),
             )
         ),
     )
-    return fig
 
 
 def create_imagebind_llm_demo():

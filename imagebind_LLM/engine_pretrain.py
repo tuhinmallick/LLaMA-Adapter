@@ -19,7 +19,7 @@ def train_one_epoch(model: LLaMA_adapter,
 
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    header = 'Epoch: [{}]'.format(epoch)
+    header = f'Epoch: [{epoch}]'
     print_freq = 10
 
     accum_iter = args.accum_iter
@@ -27,7 +27,7 @@ def train_one_epoch(model: LLaMA_adapter,
     optimizer.zero_grad()
 
     if log_writer is not None:
-        print('log_dir: {}'.format(log_writer.log_dir))
+        print(f'log_dir: {log_writer.log_dir}')
     for data_iter_step, (examples, labels, example_mask, imgs) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         # we use a per iteration (instead of per epoch) lr scheduler
         if data_iter_step % accum_iter == 0:
@@ -41,7 +41,7 @@ def train_one_epoch(model: LLaMA_adapter,
         c_loss_value = c_loss.item()
         m_loss_value = m_loss
         if not math.isfinite(loss_value):
-            print("Loss is {}, stopping training".format(loss_value))
+            print(f"Loss is {loss_value}, stopping training")
             sys.exit(1)
 
         loss /= accum_iter

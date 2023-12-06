@@ -120,7 +120,7 @@ class TransformerEncoder(nn.Module):
             for i in range(depth)])
 
     def forward(self, x, pos):
-        for _, block in enumerate(self.blocks):
+        for block in self.blocks:
             x = block(x + pos)
         return x
 
@@ -232,8 +232,7 @@ class PointTransformer(nn.Module):
         # transformer
         x = self.blocks(x, pos)
         x = self.norm(x)
-        concat_f = torch.cat([x[:, 0], x[:, 1:].max(1)[0]], dim=-1)
-        return concat_f
+        return torch.cat([x[:, 0], x[:, 1:].max(1)[0]], dim=-1)
     
 class PointTransformerBind(nn.Module):
     def __init__(self):
@@ -247,5 +246,4 @@ class PointTransformerBind(nn.Module):
 
     def forward(self, pc):
         pc_feat = self.point_encoder(pc)
-        pc_embed = pc_feat @ self.pc_projection
-        return pc_embed
+        return pc_feat @ self.pc_projection

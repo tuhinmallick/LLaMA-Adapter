@@ -101,8 +101,8 @@ def main(args):
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
 
-    print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
-    print("{}".format(args).replace(', ', ',\n'))
+    print(f'job dir: {os.path.dirname(os.path.realpath(__file__))}')
+    print(f"{args}".replace(', ', ',\n'))
 
     device = torch.device('cuda')
 

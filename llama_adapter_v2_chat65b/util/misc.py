@@ -100,12 +100,12 @@ class MetricLogger(object):
             return self.meters[attr]
         if attr in self.__dict__:
             return self.__dict__[attr]
-        raise AttributeError("'{}' object has no attribute '{}'".format(type(self).__name__, attr))
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{attr}'"
+        )
 
     def __str__(self):
-        loss_str = []
-        for name, meter in self.meters.items():
-            loss_str.append("{}: {}".format(name, str(meter)))
+        loss_str = [f"{name}: {str(meter)}" for name, meter in self.meters.items()]
         return self.delimiter.join(loss_str)
 
     def synchronize_between_processes(self):
@@ -116,20 +116,19 @@ class MetricLogger(object):
         self.meters[name] = meter
 
     def log_every(self, iterable, print_freq, header=None):
-        i = 0
         if not header:
             header = ""
         start_time = time.time()
         end = time.time()
         iter_time = SmoothedValue(fmt="{avg:.4f}")
         data_time = SmoothedValue(fmt="{avg:.4f}")
-        space_fmt = ":" + str(len(str(len(iterable)))) + "d"
+        space_fmt = f":{len(str(len(iterable)))}d"
         log_msg = [header, "[{0" + space_fmt + "}/{1}]", "eta: {eta}", "{meters}", "time: {time}", "data: {data}"]
         if torch.cuda.is_available():
             log_msg.append("max mem: {memory:.0f}")
         log_msg = self.delimiter.join(log_msg)
         MB = 1024.0 * 1024.0
-        for obj in iterable:
+        for i, obj in enumerate(iterable):
             data_time.update(time.time() - end)
             yield obj
             iter_time.update(time.time() - end)
@@ -154,7 +153,6 @@ class MetricLogger(object):
                             i, len(iterable), eta=eta_string, meters=str(self), time=str(iter_time), data=str(data_time)
                         )
                     )
-            i += 1
             end = time.time()
         total_time = time.time() - start_time
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
@@ -178,23 +176,15 @@ def setup_for_distributed(is_master):
 
 
 def is_dist_avail_and_initialized():
-    if not dist.is_available():
-        return False
-    if not dist.is_initialized():
-        return False
-    return True
+    return False if not dist.is_available() else bool(dist.is_initialized())
 
 
 def get_world_size():
-    if not is_dist_avail_and_initialized():
-        return 1
-    return dist.get_world_size()
+    return 1 if not is_dist_avail_and_initialized() else dist.get_world_size()
 
 
 def get_rank():
-    if not is_dist_avail_and_initialized():
-        return 0
-    return dist.get_rank()
+    return 0 if not is_dist_avail_and_initialized() else dist.get_rank()
 
 
 def is_main_process():
@@ -231,7 +221,7 @@ def init_distributed_mode():
         )
 
     torch.cuda.set_device(gpu)
-    print("| distributed init (rank {}), gpu {}".format(rank, gpu), flush=True)
+    print(f"| distributed init (rank {rank}), gpu {gpu}", flush=True)
     torch.distributed.init_process_group("nccl", world_size=world_size, rank=rank)
     torch.distributed.barrier()
     setup_for_distributed(rank == 0)
@@ -270,24 +260,30 @@ def get_grad_norm_(parameters, norm_type: float = 2.0) -> torch.Tensor:
     if isinstance(parameters, torch.Tensor):
         parameters = [parameters]
     parameters = [p for p in parameters if p.grad is not None]
-    norm_type = float(norm_type)
-    if len(parameters) == 0:
+    norm_type = norm_type
+    if not parameters:
         return torch.tensor(0.0)
     device = parameters[0].grad.device
-    if norm_type == inf:
-        total_norm = max(p.grad.detach().abs().max().to(device) for p in parameters)
-    else:
-        total_norm = torch.norm(
-            torch.stack([torch.norm(p.grad.detach(), norm_type).to(device) for p in parameters]), norm_type
+    return (
+        max(p.grad.detach().abs().max().to(device) for p in parameters)
+        if norm_type == inf
+        else torch.norm(
+            torch.stack(
+                [
+                    torch.norm(p.grad.detach(), norm_type).to(device)
+                    for p in parameters
+                ]
+            ),
+            norm_type,
         )
-    return total_norm
+    )
 
 
 def save_model(args, epoch, model, model_without_ddp, optimizer, loss_scaler):
     output_dir = Path(args.output_dir)
     epoch_name = str(epoch)
     if loss_scaler is not None:
-        checkpoint_paths = [output_dir / ("checkpoint-%s.pth" % epoch_name)]
+        checkpoint_paths = [output_dir / f"checkpoint-{epoch_name}.pth"]
         model_state_dict = model_without_ddp.state_dict()
         for n, p in model_without_ddp.named_parameters():
             if not p.requires_grad:
@@ -304,7 +300,11 @@ def save_model(args, epoch, model, model_without_ddp, optimizer, loss_scaler):
             save_on_master(to_save, checkpoint_path)
     else:
         client_state = {"epoch": epoch}
-        model.save_checkpoint(save_dir=args.output_dir, tag="checkpoint-%s" % epoch_name, client_state=client_state)
+        model.save_checkpoint(
+            save_dir=args.output_dir,
+            tag=f"checkpoint-{epoch_name}",
+            client_state=client_state,
+        )
 
 
 def load_model(args, model_without_ddp, optimizer, loss_scaler):
@@ -320,7 +320,7 @@ def load_model(args, model_without_ddp, optimizer, loss_scaler):
             try:
                 torch.load(ckpt_path, map_location="cpu")
             except Exception as e:
-                print("Failed to load %s with error:" % ckpt_path, e)
+                print(f"Failed to load {ckpt_path} with error:", e)
                 continue
             print("Found a valid checkpoint:", ckpt_path)
             args.resume = ckpt_path
@@ -337,7 +337,7 @@ def load_model(args, model_without_ddp, optimizer, loss_scaler):
         for n, p in model_without_ddp.named_parameters():
             if p.requires_grad:
                 assert n not in missing_keys
-        print("Resume checkpoint %s" % args.resume)
+        print(f"Resume checkpoint {args.resume}")
         if "optimizer" in checkpoint and "epoch" in checkpoint and not (hasattr(args, "eval") and args.eval):
             optimizer.load_state_dict(checkpoint["optimizer"])
             args.start_epoch = checkpoint["epoch"] + 1
@@ -348,10 +348,9 @@ def load_model(args, model_without_ddp, optimizer, loss_scaler):
 
 def all_reduce_mean(x):
     world_size = get_world_size()
-    if world_size > 1:
-        x_reduce = torch.tensor(x).cuda()
-        dist.all_reduce(x_reduce)
-        x_reduce /= world_size
-        return x_reduce.item()
-    else:
+    if world_size <= 1:
         return x
+    x_reduce = torch.tensor(x).cuda()
+    dist.all_reduce(x_reduce)
+    x_reduce /= world_size
+    return x_reduce.item()

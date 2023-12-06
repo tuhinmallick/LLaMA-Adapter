@@ -15,7 +15,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 ori_ckpt_path = Path(args.ori)
-target_ckpt_path = ori_ckpt_path.with_stem("converted_" + ori_ckpt_path.stem)
+target_ckpt_path = ori_ckpt_path.with_stem(f"converted_{ori_ckpt_path.stem}")
 
 ckpt = torch.load(ori_ckpt_path, map_location='cpu')
 

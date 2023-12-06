@@ -28,7 +28,7 @@ def train_one_epoch(model: torch.nn.Module,
     model.train(True)
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    header = 'Epoch: [{}]'.format(epoch)
+    header = f'Epoch: [{epoch}]'
     print_freq = 10
 
     accum_iter = args.accum_iter
@@ -36,7 +36,7 @@ def train_one_epoch(model: torch.nn.Module,
     optimizer.zero_grad()
 
     if log_writer is not None:
-        print('log_dir: {}'.format(log_writer.log_dir))
+        print(f'log_dir: {log_writer.log_dir}')
     for data_iter_step, (examples, labels, example_mask, imgs) in enumerate(
         metric_logger.log_every(data_loader, print_freq, header)):
 
@@ -55,7 +55,7 @@ def train_one_epoch(model: torch.nn.Module,
         c_loss_value = c_loss.item()
         m_loss_value = m_loss
         if not math.isfinite(loss_value):
-            print("Loss is {}, stopping training".format(loss_value))
+            print(f"Loss is {loss_value}, stopping training")
             sys.exit(1)
 
         loss /= accum_iter
@@ -110,11 +110,11 @@ def val_one_epoch(model: torch.nn.Module,
     print("!!!start validation!!!")
     model.eval()
     metric_logger = misc.MetricLogger(delimiter="  ")
-    header = 'Epoch: [{}]'.format(epoch)
+    header = f'Epoch: [{epoch}]'
     print_freq = 10
 
     if log_writer is not None:
-        print('log_dir: {}'.format(log_writer.log_dir))
+        print(f'log_dir: {log_writer.log_dir}')
     for data_iter_step, (examples, labels, example_mask) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 
         with torch.cuda.amp.autocast(dtype=torch.bfloat16):
@@ -124,24 +124,24 @@ def val_one_epoch(model: torch.nn.Module,
         c_loss_value = c_loss.item()
         m_loss_value = m_loss.item()
         if not math.isfinite(loss_value):
-            print("Loss is {}, stopping training".format(loss_value))
+            print(f"Loss is {loss_value}, stopping training")
             sys.exit(1)
 
         metric_logger.update(closs=c_loss_value)
         metric_logger.update(mloss=m_loss_value)
 
 
-        # loss_value_reduce = misc.all_reduce_mean(loss_value)
-        # c_loss_value_reduce = misc.all_reduce_mean(c_loss_value)
-        # m_loss_value_reduce = misc.all_reduce_mean(m_loss_value)
-        # if log_writer is not None and (data_iter_step + 1) % accum_iter == 0:
-        #     """ We use epoch_1000x as the x-axis in tensorboard.
-        #     This calibrates different curves when batch size changes.
-        #     """
-        #     epoch_1000x = int((data_iter_step / len(data_loader) + epoch) * 1000)
-        #     log_writer.add_scalar('c_train_loss', c_loss_value_reduce, epoch_1000x)
-        #     log_writer.add_scalar('m_train_loss', m_loss_value_reduce, epoch_1000x)
-        #     log_writer.add_scalar('lr', lr, epoch_1000x)
+            # loss_value_reduce = misc.all_reduce_mean(loss_value)
+            # c_loss_value_reduce = misc.all_reduce_mean(c_loss_value)
+            # m_loss_value_reduce = misc.all_reduce_mean(m_loss_value)
+            # if log_writer is not None and (data_iter_step + 1) % accum_iter == 0:
+            #     """ We use epoch_1000x as the x-axis in tensorboard.
+            #     This calibrates different curves when batch size changes.
+            #     """
+            #     epoch_1000x = int((data_iter_step / len(data_loader) + epoch) * 1000)
+            #     log_writer.add_scalar('c_train_loss', c_loss_value_reduce, epoch_1000x)
+            #     log_writer.add_scalar('m_train_loss', m_loss_value_reduce, epoch_1000x)
+            #     log_writer.add_scalar('lr', lr, epoch_1000x)
 
 
     # gather the stats from all processes

@@ -16,11 +16,13 @@ def get_missing_parameters_message(keys: List[str]) -> str:
         str: message.
     """
     groups = _group_checkpoint_keys(keys)
-    msg = "Some model parameters or buffers are not found in the checkpoint:\n"
-    msg += "\n".join(
-        "  " + colored(k + _group_to_str(v), "blue") for k, v in groups.items()
+    return (
+        "Some model parameters or buffers are not found in the checkpoint:\n"
+        + "\n".join(
+            "  " + colored(k + _group_to_str(v), "blue")
+            for k, v in groups.items()
+        )
     )
-    return msg
 
 
 def get_unexpected_parameters_message(keys: List[str]) -> str:
@@ -33,11 +35,13 @@ def get_unexpected_parameters_message(keys: List[str]) -> str:
         str: message.
     """
     groups = _group_checkpoint_keys(keys)
-    msg = "The checkpoint state_dict contains keys that are not used by the model:\n"
-    msg += "\n".join(
-        "  " + colored(k + _group_to_str(v), "magenta") for k, v in groups.items()
+    return (
+        "The checkpoint state_dict contains keys that are not used by the model:\n"
+        + "\n".join(
+            "  " + colored(k + _group_to_str(v), "magenta")
+            for k, v in groups.items()
+        )
     )
-    return msg
 
 
 def _strip_prefix_if_present(state_dict: Dict[str, Any], prefix: str) -> None:
@@ -86,10 +90,7 @@ def _group_checkpoint_keys(keys: List[str]) -> Dict[str, List[str]]:
     groups = defaultdict(list)
     for key in keys:
         pos = key.rfind(".")
-        if pos >= 0:
-            head, tail = key[:pos], [key[pos + 1:]]
-        else:
-            head, tail = key, []
+        head, tail = (key[:pos], [key[pos + 1:]]) if pos >= 0 else (key, [])
         groups[head].extend(tail)
     return groups
 
@@ -102,13 +103,10 @@ def _group_to_str(group: List[str]) -> str:
     Returns:
         str: formated string.
     """
-    if len(group) == 0:
+    if not group:
         return ""
 
-    if len(group) == 1:
-        return "." + group[0]
-
-    return ".{" + ", ".join(group) + "}"
+    return f".{group[0]}" if len(group) == 1 else ".{" + ", ".join(group) + "}"
 
 
 def _named_modules_with_dup(

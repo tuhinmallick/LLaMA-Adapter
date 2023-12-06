@@ -49,7 +49,7 @@ class MMEDataset(Dataset):
             for question_file in question_files:
                 image_file_name = os.path.join(DATA_DIR, dataset_name, "images", question_file.replace('.txt', image_suffix))
                 with open(os.path.join(DATA_DIR, dataset_name, "questions_answers_YN", question_file), 'r', encoding='utf-8') as f:
-                    for line in f.readlines():
+                    for line in f:
                         try:
                             question, gt_answer = line.replace('\n', '').split('\t')
                             self.dataset.append({
@@ -65,7 +65,7 @@ class MMEDataset(Dataset):
             for question_file in question_files:
                 image_file_name = question_file.replace(".txt", image_suffix)
                 with open(question_file, 'r', encoding='utf-8') as f:
-                    for line in f.readlines():
+                    for line in f:
                         try:
                             question, gt_answer = line.replace('\n', '').split('\t')
                             self.dataset.append({

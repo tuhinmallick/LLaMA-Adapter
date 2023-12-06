@@ -33,8 +33,7 @@ def index_points(points, idx):
     repeat_shape = list(idx.shape)
     repeat_shape[0] = 1
     batch_indices = torch.arange(B, dtype=torch.long).to(device).view(view_shape).repeat(repeat_shape)
-    new_points = points[batch_indices, idx, :]
-    return new_points
+    return points[batch_indices, idx, :]
 
 def fps(xyz, npoint):
     """
@@ -62,20 +61,16 @@ def worker_init_fn(worker_id):
     np.random.seed(np.random.get_state()[1][0] + worker_id)
 
 def build_lambda_sche(opti, config):
-    if config.get('decay_step') is not None:
-        lr_lbmd = lambda e: max(config.lr_decay ** (e / config.decay_step), config.lowest_decay)
-        scheduler = torch.optim.lr_scheduler.LambdaLR(opti, lr_lbmd)
-    else:
+    if config.get('decay_step') is None:
         raise NotImplementedError()
-    return scheduler
+    lr_lbmd = lambda e: max(config.lr_decay ** (e / config.decay_step), config.lowest_decay)
+    return torch.optim.lr_scheduler.LambdaLR(opti, lr_lbmd)
 
 def build_lambda_bnsche(model, config):
-    if config.get('decay_step') is not None:
-        bnm_lmbd = lambda e: max(config.bn_momentum * config.bn_decay ** (e / config.decay_step), config.lowest_decay)
-        bnm_scheduler = BNMomentumScheduler(model, bnm_lmbd)
-    else:
+    if config.get('decay_step') is None:
         raise NotImplementedError()
-    return bnm_scheduler
+    bnm_lmbd = lambda e: max(config.bn_momentum * config.bn_decay ** (e / config.decay_step), config.lowest_decay)
+    return BNMomentumScheduler(model, bnm_lmbd)
     
 def set_random_seed(seed, deterministic=False):
     """Set random seed.
@@ -120,10 +115,7 @@ def is_seq_of(seq, expected_type, seq_type=None):
         exp_seq_type = seq_type
     if not isinstance(seq, exp_seq_type):
         return False
-    for item in seq:
-        if not isinstance(item, expected_type):
-            return False
-    return True
+    return all(isinstance(item, expected_type) for item in seq)
 
 
 def set_bn_momentum_default(bn_momentum):
@@ -140,9 +132,7 @@ class BNMomentumScheduler(object):
     ):
         if not isinstance(model, nn.Module):
             raise RuntimeError(
-                "Class '{}' is not a PyTorch nn Module".format(
-                    type(model).__name__
-                )
+                f"Class '{type(model).__name__}' is not a PyTorch nn Module"
             )
 
         self.model = model
@@ -176,15 +166,11 @@ def seprate_point_cloud(xyz, num_points, crop, fixed_points = None, padding_zero
     assert c == 3
     if crop == num_points:
         return xyz, None
-        
+
     INPUT = []
     CROP = []
     for points in xyz:
-        if isinstance(crop,list):
-            num_crop = random.randint(crop[0],crop[1])
-        else:
-            num_crop = crop
-
+        num_crop = random.randint(crop[0],crop[1]) if isinstance(crop,list) else crop
         points = points.unsqueeze(0)
 
         if fixed_points is None:       
@@ -263,7 +249,7 @@ def visualize_KITTI(path, data_list, titles = ['input','pred'], cmap=['bwr','aut
     if not os.path.exists(path):
         os.makedirs(path)
 
-    pic_path = path + '.png'
+    pic_path = f'{path}.png'
     fig.savefig(pic_path)
 
     np.save(os.path.join(path, 'input.npy'), data_list[0].numpy())
